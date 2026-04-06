@@ -1,10 +1,12 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { getEntry, today, yesterday } from '$lib/db.js'
+  import { requestPersistentStorage } from '$lib/storage.js'
   import QuickEntry from '$lib/components/QuickEntry.svelte'
   import BulkAdd from '$lib/components/BulkAdd.svelte'
   import RecentEntries from '$lib/components/RecentEntries.svelte'
   import ExportPanel from '$lib/components/ExportPanel.svelte'
+  import Settings from '$lib/components/Settings.svelte'
   import { Tabs, TabsList, TabsTrigger, TabsContent } from '$lib/components/ui/tabs/index.js'
   import { Separator } from '$lib/components/ui/separator/index.js'
   import { Clock } from 'lucide-svelte'
@@ -25,7 +27,14 @@
     yesterdayHours = y?.hours ?? 0
   }
 
-  onMount(loadHours)
+  onMount(async () => {
+    await loadHours()
+    // Silently request persistent storage on startup so the browser can grant
+    // it automatically (e.g. when the PWA is installed).
+    requestPersistentStorage().catch((err) => {
+      console.error('Failed to request persistent storage:', err)
+    })
+  })
 </script>
 
 <div class="min-h-screen bg-background">
@@ -43,6 +52,7 @@
         <TabsTrigger value="track" class="flex-1">Track</TabsTrigger>
         <TabsTrigger value="bulk" class="flex-1">Bulk</TabsTrigger>
         <TabsTrigger value="export" class="flex-1">Export</TabsTrigger>
+        <TabsTrigger value="settings" class="flex-1">Settings</TabsTrigger>
       </TabsList>
 
       <!-- TRACK TAB -->
@@ -72,6 +82,11 @@
       <!-- EXPORT TAB -->
       <TabsContent value="export" class="space-y-4">
         <ExportPanel />
+      </TabsContent>
+
+      <!-- SETTINGS TAB -->
+      <TabsContent value="settings" class="space-y-4">
+        <Settings />
       </TabsContent>
     </Tabs>
   </main>
