@@ -2,6 +2,7 @@
   let { checked = $bindable(false), id, class: className = '', ...restProps }: { checked?: boolean; id?: string; class?: string; [key: string]: any } = $props()
 </script>
 <button
+  type="button"
   {id}
   role="switch"
   aria-checked={checked}

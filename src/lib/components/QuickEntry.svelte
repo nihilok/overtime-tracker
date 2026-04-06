@@ -1,7 +1,9 @@
 <script lang="ts">
-  import { incrementEntry, formatDate } from '$lib/db.js'
+  import { getEntry, setEntry, formatDate } from '$lib/db.js'
   import { Button } from '$lib/components/ui/button/index.js'
   import { Card, CardHeader, CardTitle, CardContent } from '$lib/components/ui/card/index.js'
+  import { Input } from '$lib/components/ui/input/index.js'
+  import { Label } from '$lib/components/ui/label/index.js'
   import { Badge } from '$lib/components/ui/badge/index.js'
   import { Minus, Plus } from 'lucide-svelte'
 
@@ -18,15 +20,28 @@
   } = $props()
 
   let loading = $state(false)
+  let note = $state('')
+
+  $effect(() => {
+    getEntry(date).then(e => { note = e?.note ?? '' })
+  })
 
   async function adjust(delta: number) {
     loading = true
     try {
-      hours = await incrementEntry(date, delta)
+      const existing = await getEntry(date)
+      const current = existing?.hours ?? 0
+      const next = Math.max(0, current + delta)
+      await setEntry(date, next, note || undefined)
+      hours = next
       onchange?.()
     } finally {
       loading = false
     }
+  }
+
+  async function saveNote() {
+    await setEntry(date, hours, note || undefined)
   }
 </script>
 
@@ -69,6 +84,10 @@
       <Button variant="secondary" size="sm" class="flex-1" onclick={() => adjust(1)} disabled={loading}>+1h</Button>
       <Button variant="secondary" size="sm" class="flex-1" onclick={() => adjust(2)} disabled={loading}>+2h</Button>
       <Button variant="secondary" size="sm" class="flex-1" onclick={() => adjust(-1)} disabled={loading || hours < 1}>-1h</Button>
+    </div>
+    <div class="mt-3 space-y-1">
+      <Label for="note-{date}" class="text-xs text-muted-foreground">Note (optional)</Label>
+      <Input id="note-{date}" type="text" bind:value={note} placeholder="e.g. Project X crunch" onblur={saveNote} />
     </div>
   </CardContent>
 </Card>

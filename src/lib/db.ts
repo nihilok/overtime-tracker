@@ -20,14 +20,21 @@ export class OvertimeDatabase extends Dexie {
 
 export const db = new OvertimeDatabase()
 
+function localDateStr(d: Date): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 export function today(): string {
-  return new Date().toISOString().slice(0, 10)
+  return localDateStr(new Date())
 }
 
 export function yesterday(): string {
   const d = new Date()
   d.setDate(d.getDate() - 1)
-  return d.toISOString().slice(0, 10)
+  return localDateStr(d)
 }
 
 export function formatDate(dateStr: string): string {
@@ -71,7 +78,7 @@ export async function bulkSetEntries(
   while (cur <= end) {
     const dow = cur.getDay()
     if (!skipWeekends || (dow !== 0 && dow !== 6)) {
-      const dateStr = cur.toISOString().slice(0, 10)
+      const dateStr = localDateStr(cur)
       await setEntry(dateStr, hours, note)
       count++
     }
@@ -93,8 +100,8 @@ export function lastFullMonthRange(): { start: string; end: string; label: strin
   const lastOfLastMonth = new Date(firstOfThisMonth.getTime() - 1)
   const firstOfLastMonth = new Date(lastOfLastMonth.getFullYear(), lastOfLastMonth.getMonth(), 1)
   return {
-    start: firstOfLastMonth.toISOString().slice(0, 10),
-    end: lastOfLastMonth.toISOString().slice(0, 10),
+    start: localDateStr(firstOfLastMonth),
+    end: localDateStr(lastOfLastMonth),
     label: firstOfLastMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
   }
 }
