@@ -47,7 +47,9 @@
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `overtime-backup-${new Date().toISOString().slice(0, 10)}.json`
+      const now = new Date()
+      const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+      a.download = `overtime-backup-${dateStr}.json`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)

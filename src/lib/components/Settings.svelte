@@ -70,12 +70,12 @@
         }
         const entries: OvertimeEntry[] = parsed.entries
         const valid = entries.every(
-          (e) =>
-            typeof e === 'object' &&
-            e !== null &&
-            typeof e.date === 'string' &&
-            /^\d{4}-\d{2}-\d{2}$/.test(e.date) &&
-            typeof e.hours === 'number'
+          (entry) =>
+            typeof entry === 'object' &&
+            entry !== null &&
+            typeof entry.date === 'string' &&
+            /^\d{4}-\d{2}-\d{2}$/.test(entry.date) &&
+            typeof entry.hours === 'number'
         )
         if (!valid) {
           importStatus = 'Invalid file: one or more entries have an unexpected format.'

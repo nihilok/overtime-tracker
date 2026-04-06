@@ -1,20 +1,24 @@
 <script lang="ts">
   import { liveQuery } from 'dexie'
-  import { db, formatDate } from '$lib/db.js'
+  import { db, formatDate, type OvertimeEntry } from '$lib/db.js'
   import { Card, CardHeader, CardTitle, CardContent } from '$lib/components/ui/card/index.js'
   import { Badge } from '$lib/components/ui/badge/index.js'
 
   // Show entries from last 30 days
-  let entries = $state<Awaited<ReturnType<typeof db.entries.toArray>> | undefined>(undefined)
+  let entries = $state<OvertimeEntry[] | undefined>(undefined)
 
   $effect(() => {
     const cutoff = new Date()
     cutoff.setDate(cutoff.getDate() - 30)
-    const start = cutoff.toISOString().slice(0, 10)
+    const y = cutoff.getFullYear()
+    const m = String(cutoff.getMonth() + 1).padStart(2, '0')
+    const d = String(cutoff.getDate()).padStart(2, '0')
+    const start = `${y}-${m}-${d}`
     const subscription = liveQuery(() =>
       db.entries.where('date').aboveOrEqual(start).sortBy('date').then(r => r.reverse())
-    ).subscribe(result => {
-      entries = result
+    ).subscribe({
+      next: result => { entries = result },
+      error: () => { entries = [] }
     })
     return () => subscription.unsubscribe()
   })
