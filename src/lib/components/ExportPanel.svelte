@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { getEntriesInRange, lastFullMonthRange } from '$lib/db.js'
+  import { getEntriesInRange, lastFullMonthRange, exportAllEntries } from '$lib/db.js'
   import { exportToExcel } from '$lib/export.js'
   import { Button } from '$lib/components/ui/button/index.js'
   import { Input } from '$lib/components/ui/input/index.js'
@@ -35,6 +35,31 @@
 
   async function exportLastMonth() {
     await exportRange(lastMonth.start, lastMonth.end, lastMonth.label)
+  }
+
+  async function exportJSON() {
+    loading = true
+    status = ''
+    try {
+      const entries = await exportAllEntries()
+      const json = JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), entries }, null, 2)
+      const blob = new Blob([json], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      const now = new Date()
+      const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+      a.download = `overtime-backup-${dateStr}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      status = `✓ Exported ${entries.length} entries as JSON`
+    } catch (err) {
+      status = `Error: ${String(err)}`
+    } finally {
+      loading = false
+    }
   }
 
   async function exportCustom(e: Event) {
@@ -88,5 +113,17 @@
     {#if status}
       <p class="text-sm {status.startsWith('✓') ? 'text-green-400' : 'text-destructive'}">{status}</p>
     {/if}
+
+    <Separator />
+
+    <!-- JSON backup -->
+    <div class="space-y-2">
+      <p class="text-sm font-medium">Full backup (JSON)</p>
+      <p class="text-xs text-muted-foreground">Download all entries as a JSON file for safekeeping or migration.</p>
+      <Button onclick={exportJSON} disabled={loading} variant="secondary" class="w-full gap-2">
+        <Download class="h-4 w-4" />
+        Export all as JSON
+      </Button>
+    </div>
   </CardContent>
 </Card>
