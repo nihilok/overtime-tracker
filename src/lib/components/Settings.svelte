@@ -11,7 +11,7 @@
     getStoragePersisted,
     requestPersistentStorage,
   } from '$lib/storage.js'
-  import { importAllEntries, type OvertimeEntry } from '$lib/db.js'
+  import { importAllEntries, exportAllEntries, type OvertimeEntry } from '$lib/db.js'
 
   /** `null` = not yet loaded, `false` = best-effort, `true` = persistent */
   let persisted = $state<boolean | null>(null)
@@ -23,6 +23,7 @@
   let fileInput = $state<HTMLInputElement | null>(null)
   let importDialogOpen = $state(false)
   let pendingEntries = $state<OvertimeEntry[]>([])
+  let currentEntryCount = $state(0)
   let importStatus = $state('')
   let importing = $state(false)
 
@@ -81,6 +82,9 @@
           return
         }
         pendingEntries = entries
+        exportAllEntries().then((existing) => {
+          currentEntryCount = existing.length
+        })
         importDialogOpen = true
       } catch {
         importStatus = 'Could not parse file. Please select a valid JSON backup.'
@@ -212,8 +216,9 @@
       <DialogTitle>Overwrite existing data?</DialogTitle>
     </DialogHeader>
     <p class="px-6 text-sm text-muted-foreground">
-      This will permanently replace all {pendingEntries.length} entries currently stored with the
-      {pendingEntries.length} entries from the backup file. This action cannot be undone.
+      This will permanently replace your current <strong>{currentEntryCount}</strong> {currentEntryCount === 1 ? 'entry' : 'entries'} with
+      the <strong>{pendingEntries.length}</strong> {pendingEntries.length === 1 ? 'entry' : 'entries'} from the backup file.
+      This action cannot be undone.
     </p>
     <DialogFooter class="px-6 pb-6">
       <Button variant="outline" onclick={cancelImport} disabled={importing}>Cancel</Button>
