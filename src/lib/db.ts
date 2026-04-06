@@ -94,6 +94,17 @@ export async function getEntriesInRange(startDate: string, endDate: string): Pro
     .sortBy('date')
 }
 
+export async function exportAllEntries(): Promise<OvertimeEntry[]> {
+  return db.entries.orderBy('date').toArray()
+}
+
+export async function importAllEntries(entries: OvertimeEntry[]): Promise<void> {
+  await db.transaction('rw', db.entries, async () => {
+    await db.entries.clear()
+    await db.entries.bulkAdd(entries.map(({ id: _id, ...rest }) => rest))
+  })
+}
+
 export function lastFullMonthRange(): { start: string; end: string; label: string } {
   const now = new Date()
   const firstOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1)

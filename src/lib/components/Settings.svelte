@@ -4,18 +4,27 @@
   import { Button } from '$lib/components/ui/button/index.js'
   import { Badge } from '$lib/components/ui/badge/index.js'
   import { Separator } from '$lib/components/ui/separator/index.js'
-  import { Shield, ShieldAlert, HardDrive } from 'lucide-svelte'
+  import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '$lib/components/ui/dialog/index.js'
+  import { Shield, ShieldAlert, HardDrive, Upload } from 'lucide-svelte'
   import {
     isPersistenceSupported,
     getStoragePersisted,
     requestPersistentStorage,
   } from '$lib/storage.js'
+  import { importAllEntries, type OvertimeEntry } from '$lib/db.js'
 
   /** `null` = not yet loaded, `false` = best-effort, `true` = persistent */
   let persisted = $state<boolean | null>(null)
   let supported = $state(false)
   let requesting = $state(false)
   let statusMessage = $state('')
+
+  // JSON import state
+  let fileInput = $state<HTMLInputElement | null>(null)
+  let importDialogOpen = $state(false)
+  let pendingEntries = $state<OvertimeEntry[]>([])
+  let importStatus = $state('')
+  let importing = $state(false)
 
   onMount(async () => {
     supported = isPersistenceSupported()
@@ -40,6 +49,67 @@
     } finally {
       requesting = false
     }
+  }
+
+  function handleFileChange(e: Event) {
+    importStatus = ''
+    const file = (e.target as HTMLInputElement).files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(reader.result as string)
+        if (
+          typeof parsed !== 'object' ||
+          parsed === null ||
+          !Array.isArray(parsed.entries)
+        ) {
+          importStatus = 'Invalid file: missing "entries" array.'
+          return
+        }
+        const entries: OvertimeEntry[] = parsed.entries
+        const valid = entries.every(
+          (e) =>
+            typeof e === 'object' &&
+            e !== null &&
+            typeof e.date === 'string' &&
+            /^\d{4}-\d{2}-\d{2}$/.test(e.date) &&
+            typeof e.hours === 'number'
+        )
+        if (!valid) {
+          importStatus = 'Invalid file: one or more entries have an unexpected format.'
+          return
+        }
+        pendingEntries = entries
+        importDialogOpen = true
+      } catch {
+        importStatus = 'Could not parse file. Please select a valid JSON backup.'
+      } finally {
+        // Reset file input so the same file can be re-selected if needed
+        if (fileInput) fileInput.value = ''
+      }
+    }
+    reader.readAsText(file)
+  }
+
+  async function confirmImport() {
+    importing = true
+    importStatus = ''
+    try {
+      await importAllEntries(pendingEntries)
+      importStatus = `✓ Imported ${pendingEntries.length} entries successfully.`
+    } catch (err) {
+      importStatus = `Error: ${String(err)}`
+    } finally {
+      importing = false
+      importDialogOpen = false
+      pendingEntries = []
+    }
+  }
+
+  function cancelImport() {
+    importDialogOpen = false
+    pendingEntries = []
   }
 </script>
 
@@ -101,5 +171,56 @@
         {/if}
       </p>
     {/if}
+
+    <Separator />
+
+    <!-- JSON import -->
+    <div class="space-y-2">
+      <p class="text-sm font-medium">Restore from backup</p>
+      <p class="text-xs text-muted-foreground">
+        Upload a previously exported JSON backup to restore your data.
+        <strong>This will overwrite all existing entries.</strong>
+      </p>
+      <Button
+        variant="secondary"
+        class="w-full gap-2"
+        onclick={() => fileInput?.click()}
+        disabled={importing}
+      >
+        <Upload class="h-4 w-4" />
+        Import JSON backup
+      </Button>
+      <input
+        bind:this={fileInput}
+        type="file"
+        accept="application/json,.json"
+        class="hidden"
+        onchange={handleFileChange}
+      />
+    </div>
+
+    {#if importStatus}
+      <p class="text-sm {importStatus.startsWith('✓') ? 'text-green-400' : 'text-destructive'}">{importStatus}</p>
+    {/if}
   </CardContent>
 </Card>
+
+<!-- Confirmation dialog -->
+<Dialog bind:open={importDialogOpen}>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>Overwrite existing data?</DialogTitle>
+    </DialogHeader>
+    <p class="px-6 text-sm text-muted-foreground">
+      This will permanently replace all {pendingEntries.length} entries currently stored with the
+      {pendingEntries.length} entries from the backup file. This action cannot be undone.
+    </p>
+    <DialogFooter class="px-6 pb-6">
+      <Button variant="outline" onclick={cancelImport} disabled={importing}>Cancel</Button>
+      <Button variant="destructive" onclick={confirmImport} disabled={importing}>
+        {importing ? 'Importing…' : 'Overwrite & Import'}
+      </Button>
+    </DialogFooter>
+  </DialogContent>
+</Dialog>
+
