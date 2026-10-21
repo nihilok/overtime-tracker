@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte'
-  import { getEntry, today, yesterday } from '$lib/db.js'
+  import { today } from '$lib/db.js'
   import { requestPersistentStorage } from '$lib/storage.js'
+  import DateNavigator from '$lib/components/DateNavigator.svelte'
   import QuickEntry from '$lib/components/QuickEntry.svelte'
   import BulkAdd from '$lib/components/BulkAdd.svelte'
   import RecentEntries from '$lib/components/RecentEntries.svelte'
@@ -11,24 +12,10 @@
   import { Separator } from '$lib/components/ui/separator/index.js'
   import { Clock } from 'lucide-svelte'
 
-  const todayDate = today()
-  const yesterdayDate = yesterday()
-
-  let todayHours = $state(0)
-  let yesterdayHours = $state(0)
+  let selectedDate = $state(today())
   let activeTab = $state('track')
 
-  async function loadHours() {
-    const [t, y] = await Promise.all([
-      getEntry(todayDate),
-      getEntry(yesterdayDate)
-    ])
-    todayHours = t?.hours ?? 0
-    yesterdayHours = y?.hours ?? 0
-  }
-
   onMount(async () => {
-    await loadHours()
     // Silently request persistent storage on startup so the browser can grant
     // it automatically (e.g. when the PWA is installed).
     requestPersistentStorage().catch((err) => {
@@ -57,26 +44,15 @@
 
       <!-- TRACK TAB -->
       <TabsContent value="track" class="space-y-4">
-        <QuickEntry
-          date={todayDate}
-          label="Today"
-          bind:hours={todayHours}
-          onchange={loadHours}
-        />
-        <Separator />
-        <QuickEntry
-          date={yesterdayDate}
-          label="Yesterday"
-          bind:hours={yesterdayHours}
-          onchange={loadHours}
-        />
+        <DateNavigator bind:selectedDate />
+        <QuickEntry date={selectedDate} />
         <Separator />
         <RecentEntries />
       </TabsContent>
 
       <!-- BULK TAB -->
       <TabsContent value="bulk" class="space-y-4">
-        <BulkAdd onSuccess={loadHours} />
+        <BulkAdd onSuccess={() => {}} />
       </TabsContent>
 
       <!-- EXPORT TAB -->

@@ -6,7 +6,7 @@
 </script>
 
 <button
-  class={buttonVariants({ variant, size, className })}
+  class={buttonVariants({ variant, size, className: className as any })}
   {onclick}
   {...restProps}
 >

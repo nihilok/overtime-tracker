@@ -43,16 +43,44 @@ export function formatDate(dateStr: string): string {
   })
 }
 
+export function shiftDate(dateStr: string, deltaDays: number): string {
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const date = new Date(y, m - 1, d)
+  date.setDate(date.getDate() + deltaDays)
+  return localDateStr(date)
+}
+
+export function getRelativeDateLabel(dateStr: string): string {
+  const t = today()
+  if (dateStr === t) return 'Today'
+  if (dateStr === shiftDate(t, -1)) return 'Yesterday'
+  const [y, m, d] = dateStr.split('-').map(Number)
+  const date = new Date(y, m - 1, d)
+  return date.toLocaleDateString(undefined, { weekday: 'long' })
+}
+
+export function getPastWeekDays(count = 7): string[] {
+  const dates: string[] = []
+  const t = new Date()
+  for (let i = count - 1; i >= 0; i--) {
+    const d = new Date(t)
+    d.setDate(d.getDate() - i)
+    dates.push(localDateStr(d))
+  }
+  return dates
+}
+
 export async function getEntry(date: string): Promise<OvertimeEntry | undefined> {
   return db.entries.where('date').equals(date).first()
 }
 
 export async function setEntry(date: string, hours: number, note?: string): Promise<void> {
   const existing = await getEntry(date)
+  const cleanNote = note !== undefined ? (note.trim() ? note.trim() : undefined) : existing?.note
   if (existing) {
-    await db.entries.update(existing.id!, { hours, note: note ?? existing.note })
+    await db.entries.update(existing.id!, { hours, note: cleanNote })
   } else {
-    await db.entries.add({ date, hours, note })
+    await db.entries.add({ date, hours, note: cleanNote })
   }
 }
 

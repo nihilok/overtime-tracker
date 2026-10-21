@@ -10,6 +10,9 @@ import {
   exportAllEntries,
   importAllEntries,
   lastFullMonthRange,
+  shiftDate,
+  getPastWeekDays,
+  getRelativeDateLabel,
 } from './db'
 
 beforeEach(async () => {
@@ -77,6 +80,13 @@ describe('setEntry / getEntry', () => {
     await setEntry('2026-04-01', 2, 'new note')
     const entry = await getEntry('2026-04-01')
     expect(entry!.note).toBe('new note')
+  })
+
+  it('clears the note when empty string is provided', async () => {
+    await setEntry('2026-04-01', 2, 'some note')
+    await setEntry('2026-04-01', 2, '')
+    const entry = await getEntry('2026-04-01')
+    expect(entry!.note).toBeUndefined()
   })
 
   it('returns undefined for a date with no entry', async () => {
@@ -240,6 +250,40 @@ describe('lastFullMonthRange', () => {
     const { start, end } = lastFullMonthRange()
     expect(start).toBe('2025-12-01')
     expect(end).toBe('2025-12-31')
+    vi.useRealTimers()
+  })
+})
+
+describe('date navigation helpers', () => {
+  it('shiftDate shifts forward and backward correctly', () => {
+    expect(shiftDate('2026-04-15', -1)).toBe('2026-04-14')
+    expect(shiftDate('2026-04-15', 1)).toBe('2026-04-16')
+    expect(shiftDate('2026-04-01', -1)).toBe('2026-03-31')
+    expect(shiftDate('2026-01-01', -1)).toBe('2025-12-31')
+  })
+
+  it('getPastWeekDays returns 7 consecutive days ending today', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-04-07T12:00:00'))
+    const days = getPastWeekDays(7)
+    expect(days).toEqual([
+      '2026-04-01',
+      '2026-04-02',
+      '2026-04-03',
+      '2026-04-04',
+      '2026-04-05',
+      '2026-04-06',
+      '2026-04-07'
+    ])
+    vi.useRealTimers()
+  })
+
+  it('getRelativeDateLabel returns Today, Yesterday, or weekday name', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-04-07T12:00:00')) // Tuesday
+    expect(getRelativeDateLabel('2026-04-07')).toBe('Today')
+    expect(getRelativeDateLabel('2026-04-06')).toBe('Yesterday')
+    expect(getRelativeDateLabel('2026-04-05')).toBe('Sunday')
     vi.useRealTimers()
   })
 })

@@ -13,7 +13,7 @@
       onclick={() => (open = false)}
       role="presentation"
       aria-hidden="true"
-    />
+    ></div>
     <div class="relative z-10 w-full max-w-lg">
       {@render children?.()}
     </div>
